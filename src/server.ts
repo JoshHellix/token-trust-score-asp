@@ -149,12 +149,12 @@ app.get("/metrics", (_req, res) => {
 });
 
 function agentCard(req?: express.Request) {
-    // Prefer an explicitly-configured PUBLIC_URL; otherwise derive from the
-    // request host so the advertised resource URL is always publicly reachable.
+    // Always prefer the request host when available — the marketplace calls
+    // this endpoint via its registered URL, so req.headers.host is the
+    // authoritative, publicly-reachable address. Fall back to PUBLIC_URL only
+    // when there is no request context (e.g. server-side generation).
     const base =
-        PUBLIC_URL && !PUBLIC_URL.includes("localhost") && !PUBLIC_URL.includes("127.0.0.1")
-            ? PUBLIC_URL
-            : req && req.headers.host
+        req && req.headers.host
                 ? `${req.protocol}://${req.headers.host}`
                 : PUBLIC_URL;
     return {
