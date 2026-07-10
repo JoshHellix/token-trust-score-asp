@@ -8,9 +8,9 @@
  */
 import express from "express";
 import { config as loadEnv } from "dotenv";
-import { paymentMiddleware, x402ResourceServer } from "@x402/express";
-import { ExactEvmScheme } from "@x402/evm/exact/server";
-import { HTTPFacilitatorClient } from "@x402/core/server";
+import { paymentMiddleware, x402ResourceServer } from "@okxweb3/x402-express";
+import { ExactEvmScheme } from "@okxweb3/x402-evm/exact/server";
+import { OKXFacilitatorClient } from "@okxweb3/x402-core";
 import { gatherSignals } from "./onchainData.js";
 import { computeTrustScore } from "./trustScore.js";
 
@@ -23,10 +23,6 @@ const PUBLIC_URL = process.env.PUBLIC_URL ?? `http://localhost:${PORT}`;
 
 // X Layer mainnet = EVM chain id 196 -> CAIP-2 network id.
 const XLAYER_NETWORK = "eip155:196";
-// Settlement asset: native USDC on X Layer (verified from X Layer docs).
-// https://www.okx.com/web3/developer/xlayer — mainnet address 0x74b7f16337b8972027f6196a17a631ac6de26d22
-const USDC_XLAYER = "0x74b7f16337b8972027f6196a17a631ac6de26d22";
-const FACILITATOR = process.env.X402_FACILITATOR ?? "https://facilitator.x402.org";
 
 // Usage metrics — proves real adoption for the hackathon.
 const usage = { previews: 0, paidCalls: 0, lastCaller: "" as string };
@@ -38,36 +34,52 @@ app.use(express.json());
 app.get("/.well-known/agent.json", (_req, res) => res.json(agentCard()));
 app.get("/health", (_req, res) => res.json({ ok: true, service: "token-trust-score" }));
 
-// Build the x402 resource server: facilitator + EVM "exact" scheme.
-const facilitatorClient = new HTTPFacilitatorClient({ url: FACILITATOR });
-const resourceServer = new x402ResourceServer(facilitatorClient).register(
-    XLAYER_NETWORK,
-    new ExactEvmScheme()
-);
+// Build the x402 resource server: OKX facilitator + EVM "exact" scheme.
+//
+// OKX.AI's A2MCP marketplace wraps the registered `endpoint` with its own
+// x402 payment layer (USDT on X Layer, eip155:196), so the ASP server itself
+// does NOT need to run a facilitator. We still support self-service x402 when
+// OKX API credentials are present (enables direct 402 calls + local demos),
+// but the server MUST stay up even without them — the marketplace is the
+// primary payment path. Hence the middleware is conditional.
+const OKX_API_KEY = process.env.OKX_API_KEY;
+const OKX_SECRET_KEY = process.env.OKX_SECRET_KEY;
+const OKX_PASSPHRASE = process.env.OKX_PASSPHRASE;
 
-// Require payment for the scoring endpoint.
-// Setting the last argument to false avoids an immediate facilitator sync on startup,
-// which makes local development more robust when the network facilitator is temporarily unreachable.
-app.use(
-    paymentMiddleware(
-        {
-            "POST /v1/trust-score": {
-                accepts: {
-                    scheme: "exact",
-                    price: { asset: USDC_XLAYER, amount: (Number(PRICE_USD) * 1e6).toString() },
-                    network: XLAYER_NETWORK,
-                    payTo: PAY_TO,
-                    maxTimeoutSeconds: 60,
+if (OKX_API_KEY && OKX_SECRET_KEY && OKX_PASSPHRASE) {
+    const facilitatorClient = new OKXFacilitatorClient({
+        apiKey: OKX_API_KEY,
+        secretKey: OKX_SECRET_KEY,
+        passphrase: OKX_PASSPHRASE,
+    });
+    const resourceServer = new x402ResourceServer(facilitatorClient).register(
+        XLAYER_NETWORK,
+        new ExactEvmScheme()
+    );
+    app.use(
+        paymentMiddleware(
+            {
+                "POST /v1/trust-score": {
+                    accepts: {
+                        scheme: "exact",
+                        price: `$${PRICE_USD}`,
+                        network: XLAYER_NETWORK,
+                        payTo: PAY_TO,
+                        maxTimeoutSeconds: 60,
+                    },
+                    description: "Token Trust Score — composite on-chain risk assessment",
                 },
-                description: "Token Trust Score — composite on-chain risk assessment",
             },
-        },
-        resourceServer,
-        undefined,
-        undefined,
-        false
-    )
-);
+            resourceServer
+        )
+    );
+    console.log("[token-trust-score] Self-service x402 enabled (OKX facilitator).");
+} else {
+    console.log(
+        "[token-trust-score] x402 middleware disabled (no OKX API keys) — " +
+        "OKX.AI marketplace handles payment gating for the registered endpoint."
+    );
+}
 
 app.post("/v1/trust-score", async (req, res) => {
     const { chain = "ethereum", address } = req.body ?? {};
@@ -108,7 +120,7 @@ app.post("/v1/trust-score/preview", async (req, res) => {
             signalCount: result.signals.length,
             upgrade: {
                 endpoint: "/v1/trust-score",
-                price: `${PRICE_USD} USDC`,
+                price: `${PRICE_USD} USDT`,
                 paymentStandard: "x402",
                 note: "Paid analysis returns the full evidence + detailed multi-signal breakdown.",
             },
@@ -142,7 +154,7 @@ function agentCard() {
                 method: "POST",
                 path: "/v1/trust-score/preview",
                 contentType: "application/json",
-                price: { amount: "0", asset: "USDC", chain: "xlayer", scheme: "free" },
+                price: { amount: "0", asset: "USDT", chain: "xlayer", scheme: "free" },
                 params: { chain: "string (ethereum|bsc|base|arbitrum|polygon|xlayer)", address: "string (0x...)" },
                 returns: "Preview result { trustScore, verdict, summary, signalCount, upgrade }",
             },
@@ -150,12 +162,12 @@ function agentCard() {
                 method: "POST",
                 path: "/v1/trust-score",
                 contentType: "application/json",
-                price: { amount: PRICE_USD, asset: "USDC", chain: "xlayer", scheme: "x402" },
+                price: { amount: PRICE_USD, asset: "USDT", chain: "xlayer", scheme: "x402" },
                 params: { chain: "string (ethereum|bsc|base|arbitrum|polygon|xlayer)", address: "string (0x...)" },
                 returns: "TrustScoreResult { trustScore, verdict, signals[], summary, evidence }",
             },
         ],
-        payment: { standard: "x402", facilitator: FACILITATOR, network: XLAYER_NETWORK },
+        payment: { standard: "x402", facilitator: "OKX", network: XLAYER_NETWORK },
         resource: { url: `${PUBLIC_URL}/v1/trust-score`, description: "Pay-per-call token trust score service", mimeType: "application/json" },
     };
 }
