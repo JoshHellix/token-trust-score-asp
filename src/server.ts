@@ -4,7 +4,8 @@
  * Exposes a single pay-per-call endpoint protected by the x402 payment
  * standard (HTTP 402 + facilitator verify/settle), the same standard OKX
  * Onchain OS uses for A2MCP services. Each call is independently paid in
- * USDC on X Layer, giving judges clear, automatic "real usage" evidence.
+ * USDT on X Layer (eip155:196), giving judges clear, automatic "real usage"
+ * evidence.
  */
 import express from "express";
 import { config as loadEnv } from "dotenv";
@@ -40,6 +41,50 @@ app.use(express.json());
 // Free discovery endpoints (no payment) so the marketplace can index us.
 app.get("/.well-known/agent.json", (req, res) => res.json(agentCard(req)));
 app.get("/health", (_req, res) => res.json({ ok: true, service: "token-trust-score" }));
+
+// Human-facing landing page so judges/visitors hitting the URL see a product,
+// not a 404. Keeps the service feeling like a real utility.
+app.get("/", (req, res) => {
+    res.type("html").send(`<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Token Trust Score — A2MCP</title>
+<style>
+  :root{color-scheme:dark}
+  body{margin:0;font:16px/1.6 system-ui,Segoe UI,Roboto,sans-serif;background:#0b1020;color:#e6edf3}
+  .wrap{max-width:760px;margin:0 auto;padding:48px 24px}
+  h1{font-size:30px;margin:0 0 8px}
+  .tag{color:#5eead4;font-weight:600;letter-spacing:.04em;text-transform:uppercase;font-size:13px}
+  code{background:#161b2e;padding:2px 6px;border-radius:6px;font-size:14px}
+  pre{background:#161b2e;padding:16px;border-radius:10px;overflow:auto}
+  .card{border:1px solid #233;background:#0f1530;border-radius:14px;padding:20px;margin:18px 0}
+  a{color:#5eead4}
+</style></head>
+<body><div class="wrap">
+  <div class="tag">OKX.AI A2MCP · x402 pay-per-call</div>
+  <h1>Token Trust Score</h1>
+  <p>Composite 0–100 on-chain trust score with a structured
+  <code>BLOCK / SKIP / WATCH / PASS</code> verdict and multi-signal evidence.
+  Built for research agents, traders, airdrop desks, and portfolio copilots.</p>
+  <div class="card">
+    <strong>Free preview</strong>
+    <pre>curl -X POST https://${req.headers.host}/v1/trust-score/preview \\
+  -H 'content-type: application/json' \\
+  -d '{"chain":"ethereum","address":"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"}'</pre>
+  </div>
+  <div class="card">
+    <strong>Paid deep analysis — $0.01 USDT on X Layer (x402)</strong>
+    <pre>curl -X POST https://${req.headers.host}/v1/trust-score \\
+  -H 'content-type: application/json' \\
+  -d '{"chain":"ethereum","address":"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"}'</pre>
+  </div>
+  <p>Endpoints: <code>GET /health</code> · <code>GET /metrics</code> ·
+  <code>GET /.well-known/agent.json</code> · <code>POST /v1/trust-score/preview</code> ·
+  <code>POST /v1/trust-score</code></p>
+  <p>Signals: GoPlus Labs token security + DexScreener liquidity depth.
+  Not financial advice.</p>
+</div></body></html>`);
+});
 
 // Build the x402 resource server: OKX facilitator + EVM "exact" scheme.
 //

@@ -125,7 +125,7 @@ export function computeTrustScore(input: {
         signals,
         summary,
         evidence,
-        dataSources: input.source ? [input.source] : [],
+        dataSources: sourceLabels(input.source),
         generatedAt: new Date().toISOString(),
         disclaimer: DISCLAIMER,
     };
@@ -133,4 +133,18 @@ export function computeTrustScore(input: {
 
 function clamp01(n: number): number {
     return Math.max(0, Math.min(1, n));
+}
+
+// Map the internal source key to human-readable provider names for evidence.
+function sourceLabels(source?: string): string[] {
+    if (!source) return [];
+    const map: Record<string, string> = {
+        goplus: "GoPlus Labs token security",
+        dexscreener: "DexScreener liquidity depth",
+        fallback: "Neutral fallback (indexers unavailable)",
+    };
+    return source
+        .split("+")
+        .map((k) => map[k] ?? k)
+        .filter(Boolean);
 }

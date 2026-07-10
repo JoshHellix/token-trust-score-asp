@@ -47,12 +47,13 @@ npm run register
 ## Hackathon execution checklist
 - [x] Build a functioning A2MCP service with clear utility
 - [x] Expose a discoverable agent card
-- [x] Support paid deep analysis on X Layer via x402
+- [x] Support paid deep analysis on X Layer via x402 (USDT, eip155:196)
 - [x] Add a free preview path to increase adoption and usage
 - [x] Make the scoring output richer with summary and evidence fields
-- [ ] Wire a real indexer or on-chain data provider for holder, LP lock, tax, and verification signals
-- [ ] Publish the agent publicly and seed real calls from test agents
-- [ ] Collect usage evidence and document it for the hackathon submission
+- [x] Wire real signal sources: GoPlus Labs + DexScreener (no API key)
+- [x] Publish the agent publicly (OKX.AI Agent #4945 "TokenGuard", under review)
+- [x] Seed real calls from a test agent (usage metrics endpoint)
+- [x] Collect usage evidence and document it for the hackathon submission
 
 ## How to maximize real-world adoption
 1. Connect a real data provider such as OKX Onchain API, a subgraph, or a trusted explorer API.

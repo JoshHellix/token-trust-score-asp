@@ -16,10 +16,10 @@
 - [x] Build a scoring engine that can handle real signal inputs
 - [x] Add support for optional indexer-backed enrichment
 - [x] Wire GoPlus Labs + DexScreener as real signal sources
-- [ ] Verify the X Layer USDC settlement address against OKX before mainnet launch
+- [x] Verify the X Layer USDT settlement address against OKX (eip155:196)
 
 ## Submission readiness
 - [x] Document the value proposition and category fit
 - [x] Add a concrete checklist for build-out and launch
 - [x] Add usage metrics endpoint to prove adoption
-- [ ] Prepare a short demo script and submission narrative
+- [x] Prepare a short demo script and submission narrative
