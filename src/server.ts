@@ -151,12 +151,16 @@ app.get("/metrics", (_req, res) => {
 function agentCard(req?: express.Request) {
     // Always prefer the request host when available — the marketplace calls
     // this endpoint via its registered URL, so req.headers.host is the
-    // authoritative, publicly-reachable address. Fall back to PUBLIC_URL only
-    // when there is no request context (e.g. server-side generation).
+    // authoritative, publicly-reachable address. Render terminates TLS and
+    // forwards http, so honor X-Forwarded-Proto to advertise https.
+    const proto =
+        (req?.headers["x-forwarded-proto"] as string)?.split(",")[0]?.trim() ||
+        req?.protocol ||
+        "https";
     const base =
         req && req.headers.host
-                ? `${req.protocol}://${req.headers.host}`
-                : PUBLIC_URL;
+            ? `${proto}://${req.headers.host}`
+            : PUBLIC_URL;
     return {
         schema: "okx-a2mcp/v1",
         name: "Token Trust Score",
