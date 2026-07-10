@@ -18,6 +18,8 @@
 import { execSync } from "node:child_process";
 
 const SERVICE_NAME = "Token Trust Score";
+// PAY_TO must match the X Layer address of the logged-in Agentic Wallet.
+// Verified from `onchainos wallet addresses`: 0x7716ea8a6c001afe4bc77e277e902a2676e8d527
 const SERVICE_DESC =
     "Pay-per-call composite on-chain trust score (0-100) with BLOCK/SKIP/WATCH verdict and evidence. " +
     "Differentiated from single-label scanners by multi-signal scoring other agents embed per-token.";
