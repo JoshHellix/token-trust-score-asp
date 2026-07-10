@@ -19,7 +19,14 @@ loadEnv();
 const PORT = Number(process.env.PORT ?? 3000);
 const PAY_TO = process.env.PAY_TO_ADDRESS ?? "0x0000000000000000000000000000000000000000";
 const PRICE_USD = process.env.PRICE_USD ?? "0.01"; // $0.01 per call
-const PUBLIC_URL = process.env.PUBLIC_URL ?? `http://localhost:${PORT}`;
+// PUBLIC_URL is used in the agent card + resource metadata. If it's missing or
+// still pointing at localhost, fall back to the incoming request's host so the
+// card always advertises a reachable URL (important for the OKX.AI marketplace).
+const RAW_PUBLIC_URL = process.env.PUBLIC_URL;
+const PUBLIC_URL =
+    RAW_PUBLIC_URL && !RAW_PUBLIC_URL.includes("localhost")
+        ? RAW_PUBLIC_URL
+        : `http://localhost:${PORT}`;
 
 // X Layer mainnet = EVM chain id 196 -> CAIP-2 network id.
 const XLAYER_NETWORK = "eip155:196";
@@ -31,7 +38,7 @@ const app = express();
 app.use(express.json());
 
 // Free discovery endpoints (no payment) so the marketplace can index us.
-app.get("/.well-known/agent.json", (_req, res) => res.json(agentCard()));
+app.get("/.well-known/agent.json", (req, res) => res.json(agentCard(req)));
 app.get("/health", (_req, res) => res.json({ ok: true, service: "token-trust-score" }));
 
 // Build the x402 resource server: OKX facilitator + EVM "exact" scheme.
@@ -141,7 +148,15 @@ app.get("/metrics", (_req, res) => {
     });
 });
 
-function agentCard() {
+function agentCard(req?: express.Request) {
+    // Prefer an explicitly-configured PUBLIC_URL; otherwise derive from the
+    // request host so the advertised resource URL is always publicly reachable.
+    const base =
+        PUBLIC_URL && !PUBLIC_URL.includes("localhost") && !PUBLIC_URL.includes("127.0.0.1")
+            ? PUBLIC_URL
+            : req && req.headers.host
+                ? `${req.protocol}://${req.headers.host}`
+                : PUBLIC_URL;
     return {
         schema: "okx-a2mcp/v1",
         name: "Token Trust Score",
@@ -168,7 +183,7 @@ function agentCard() {
             },
         ],
         payment: { standard: "x402", facilitator: "OKX", network: XLAYER_NETWORK },
-        resource: { url: `${PUBLIC_URL}/v1/trust-score`, description: "Pay-per-call token trust score service", mimeType: "application/json" },
+        resource: { url: `${base}/v1/trust-score`, description: "Pay-per-call token trust score service", mimeType: "application/json" },
     };
 }
 
