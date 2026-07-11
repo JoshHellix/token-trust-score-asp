@@ -135,6 +135,8 @@ app.post("/v1/trust-score/preview", async (req, res) => {
             verdict: result.verdict,
             summary: result.summary,
             signalCount: result.signals.length,
+            signals: result.signals,
+            dataSources: result.dataSources,
             upgrade: {
                 endpoint: "/v1/trust-score",
                 price: `${PRICE_USD} USDT`,
