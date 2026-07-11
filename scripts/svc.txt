@@ -1,0 +1,1 @@
+[{"serviceName":"Token Trust Score","serviceDescription":"desc here","serviceType":"A2MCP","fee":"0.01","endpoint":"https://tokenguard-p3pk.onrender.com/v1/trust-score"}]

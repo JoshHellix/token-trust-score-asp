@@ -1,0 +1,12 @@
+﻿{
+  "pass": false,
+  "findings": [
+    {
+      "field": "service",
+      "code": "PARSE",
+      "severity": "block",
+      "issue": "--service is not a valid JSON array of service objects.",
+      "fix": "Provide a JSON array, e.g. [{\"name\":\"...\",\"servicedescription\":\"...\",\"servicetype\":\"A2MCP\",\"fee\":\"0\",\"endpoint\":\"https://...\"}]."
+    }
+  ]
+}
